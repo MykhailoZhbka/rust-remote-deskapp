@@ -1,0 +1,80 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          hoptodesk
+# Required-Start:    $remote_fs $syslog $network
+# Required-Stop:     $remote_fs $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start hoptodesk daemon at boot time
+# Description:       Enable service provided by hoptodesk daemon.
+### END INIT INFO
+
+NAME=hoptodesk
+DESC="HopToDesk service"
+
+# Define the location of the executable and any necessary options or arguments
+DAEMON=/usr/bin/hoptodesk
+DAEMON_OPTS="--service"
+
+# Define the user and group to run the service as
+USER=root
+GROUP=root
+
+# Define the PID file and log file locations
+PIDFILE=/var/run/hoptodesk.pid
+LOGFILE=/var/log/hoptodesk.log
+
+set -e
+. /lib/lsb/init-functions
+
+# Start the service
+do_start() {
+    # Check if the service is already running
+    if [ -e $PIDFILE ] && kill -0 $(cat $PIDFILE) > /dev/null 2>&1; then
+        echo "$NAME is already running"
+        return 1
+    fi
+
+    # Start the service
+    echo "Starting $NAME"
+    start-stop-daemon --start --background --quiet --make-pidfile \
+                      --pidfile $PIDFILE --chuid $USER:$GROUP \
+                      --exec $DAEMON -- $DAEMON_OPTS >> $LOGFILE 2>&1
+}
+
+# Stop the service
+do_stop() {
+    # Check if the service is running
+    if [ ! -e $PIDFILE ] || ! kill -0 $(cat $PIDFILE) > /dev/null 2>&1; then
+        echo "$NAME is not running"
+        return 1
+    fi
+
+    # Stop the service
+    echo "Stopping $NAME"
+    start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON
+    rm -f $PIDFILE
+}
+
+# Main script logic
+case "$1" in
+    start)
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    restart)
+        do_stop
+        do_start
+        ;;
+    status)
+        status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
